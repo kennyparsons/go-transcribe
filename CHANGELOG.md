@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/kennyparsons/go-transcribe/compare/v1.0.1...v1.0.2) (2025-08-21)
+
+
+### Bug Fixes
+
+* **ci:** use macos runner for goreleaser build ([7e101b5](https://github.com/kennyparsons/go-transcribe/commit/7e101b5a7d60ff38f4403a6c2dbda13dd54a0a6d))
+
 ## [1.0.1](https://github.com/kennyparsons/go-transcribe/compare/v1.0.0...v1.0.1) (2025-08-21)
 
 
