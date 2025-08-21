@@ -1,0 +1,59 @@
+version: 2
+
+project_name: go-transcribe
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - main: ./cmd/whispcli
+    binary: go-transcribe
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  -
+    name: go-transcribe
+    commit_author:
+      name: Kenny Parsons
+      email: kenny.parsons@gmail.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Formula
+    description: "A Go command-line tool that performs transcription using whisper.cpp."
+    license: "MIT"
+    install: |
+      bin.install "go-transcribe"
+      bin.install_symlink "go-transcribe" => "transcribe"
+    test: |
+      system "#{bin}/go-transcribe --version"
+    repository:
+      owner: kennyparsons
+      name: homebrew-go-transcribe
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"

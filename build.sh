@@ -15,6 +15,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # These flags are necessary to link against the whisper.cpp and ggml static libraries.
 CGO_CFLAGS="-I${SCRIPT_DIR}/whisper.cpp/include -I${SCRIPT_DIR}/whisper.cpp/ggml/include" \
 CGO_LDFLAGS="-L${SCRIPT_DIR}/whisper.cpp/build_go/src -L${SCRIPT_DIR}/whisper.cpp/build_go/ggml/src -L${SCRIPT_DIR}/whisper.cpp/build_go/ggml/src/ggml-metal -L${SCRIPT_DIR}/whisper.cpp/build_go/ggml/src/ggml-blas" \
-go build -o gotranscribe ./cmd/whispcli
+go build -o go-transcribe ./cmd/whispcli
 
-echo "✅ Build complete! The binary is located at ./gotranscribe"
+echo "✅ Build complete! The binary is located at ./go-transcribe"

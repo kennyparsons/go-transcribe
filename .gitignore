@@ -2,5 +2,4 @@
 GEMINI.md
 
 # Compiled binary
-gotranscribe
-whispcli
+go-transcribe
