@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/kennyparsons/go-transcribe/compare/v1.0.0...v1.0.1) (2025-08-21)
+
+
+### Bug Fixes
+
+* **release:** downgrade goreleaser config to v1 ([6b3df7f](https://github.com/kennyparsons/go-transcribe/commit/6b3df7f6c13fd96d4e6ec715baa606cd9b4158e1))
+
 # 1.0.0 (2025-08-21)
 
 
