@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/kennyparsons/go-transcribe/compare/v1.0.4...v1.0.5) (2025-08-22)
+
+
+### Bug Fixes
+
+* **ci:** use absolute paths for CGO flags in goreleaser ([c1bddf9](https://github.com/kennyparsons/go-transcribe/commit/c1bddf9ecac262351a1ddfe77fbe3fd4535c54ff))
+
 ## [1.0.4](https://github.com/kennyparsons/go-transcribe/compare/v1.0.3...v1.0.4) (2025-08-22)
 
 
