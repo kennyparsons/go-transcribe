@@ -22,7 +22,7 @@ import (
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
-const AppVersion = "v1.0.0"
+var version = "dev"
 
 // --- Configuration ---
 
@@ -136,7 +136,7 @@ func transcribe(args []string, modelPathOverride string) {
 	}
 
 	transcribeCmd := flag.NewFlagSet("transcribe", flag.ExitOnError)
-	
+
 	transcribeCmd.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s transcribe <media-file>\n", filepath.Base(os.Args[0]))
 		fmt.Fprintln(os.Stderr, "Use the global --model flag to override the default model path.")
@@ -365,7 +365,7 @@ func setup(args []string) {
 // --- Version Command ---
 
 func showVersion() {
-	fmt.Printf("gotranscribe version %s\n", AppVersion)
+	fmt.Printf("go-transcribe: %s\n", version)
 }
 
 // --- Main ---
