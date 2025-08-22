@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
 	"github.com/schollz/progressbar/v3"
@@ -113,6 +115,10 @@ func vlcToPCM(inputFile string) ([]float32, error) {
 		return nil, fmt.Errorf("VLC execution failed: %w\nVLC stderr: %s", err, stderr.String())
 	}
 
+	// --- Silence ffmpeg-go logger ---
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(os.Stderr) // Restore logger output
+
 	// Now, use ffmpeg-go to read the clean WAV file produced by VLC
 	buf := bytes.NewBuffer(nil)
 	err = ffmpeg.Input(tempFilePath).
@@ -185,58 +191,82 @@ func transcribe(args []string, modelPathOverride string) {
 	samples, err := vlcToPCM(in)
 	must(err)
 
-	// --- Capture and suppress C++ output ---
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout = wOut
-	os.Stderr = wErr
-
 	fmt.Println("Loading model...")
+	fmt.Println("Transcribing...")
+
+	// --- Capture and suppress C++ output using low-level file descriptor redirection ---
+	
+	// Save original file descriptors
+	origStdout, err := syscall.Dup(int(os.Stdout.Fd()))
+	must(err)
+	origStderr, err := syscall.Dup(int(os.Stderr.Fd()))
+	must(err)
+
+	// Create a pipe
+	r, w, err := os.Pipe()
+	must(err)
+
+	// Redirect stdout and stderr to the write end of the pipe
+	err = syscall.Dup2(int(w.Fd()), int(os.Stdout.Fd()))
+	must(err)
+	err = syscall.Dup2(int(w.Fd()), int(os.Stderr.Fd()))
+	must(err)
+
+	// This defer block is crucial to ensure the original FDs are restored
+	defer func() {
+		w.Close()
+		syscall.Dup2(origStdout, int(os.Stdout.Fd()))
+		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
+		syscall.Close(origStdout)
+		syscall.Close(origStderr)
+	}()
+
+	// --- Start of captured section ---
+
 	model, err := whisper.New(modelPath)
 	if err != nil {
-		// Stop capturing and print error
-		wOut.Close()
-		wErr.Close()
-		os.Stdout = oldStdout
-		os.Stderr = oldStderr
-		stdoutBytes, _ := io.ReadAll(rOut)
-		stderrBytes, _ := io.ReadAll(rErr)
-		fmt.Printf("Error loading model:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		// Manually restore output to print the error
+		w.Close()
+		syscall.Dup2(origStdout, int(os.Stdout.Fd()))
+		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
+		
+		outputBytes, _ := io.ReadAll(r)
+		fmt.Printf("Error loading model:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
 	defer model.Close()
 
 	ctx, err := model.NewContext()
 	if err != nil {
-		wOut.Close()
-		wErr.Close()
-		os.Stdout = oldStdout
-		os.Stderr = oldStderr
-		stdoutBytes, _ := io.ReadAll(rOut)
-		stderrBytes, _ := io.ReadAll(rErr)
-		fmt.Printf("Error creating context:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		w.Close()
+		syscall.Dup2(origStdout, int(os.Stdout.Fd()))
+		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
+
+		outputBytes, _ := io.ReadAll(r)
+		fmt.Printf("Error creating context:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
 
 	ctx.SetLanguage("en")
 
-	fmt.Println("Transcribing...")
 	err = ctx.Process(samples, nil, nil, nil)
 
-	// --- Restore output ---
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldStdout
-	os.Stderr = oldStderr
+	// --- End of captured section ---
+	
+	// Close the write end of the pipe to signal EOF to the reader
+	w.Close()
+
+	// Restore original file descriptors
+	syscall.Dup2(origStdout, int(os.Stdout.Fd()))
+	syscall.Dup2(origStderr, int(os.Stderr.Fd()))
 
 	if err != nil {
-		stdoutBytes, _ := io.ReadAll(rOut)
-		stderrBytes, _ := io.ReadAll(rErr)
-		fmt.Printf("Error during transcription:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		outputBytes, _ := io.ReadAll(r)
+		fmt.Printf("Error during transcription:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
+	r.Close()
+
 
 	f, err := os.Create(outTxt)
 	must(err)
@@ -253,6 +283,8 @@ func transcribe(args []string, modelPathOverride string) {
 
 	fmt.Printf("✅ Transcription saved to %s\n", outTxt)
 }
+
+
 
 
 // --- Setup Command ---
