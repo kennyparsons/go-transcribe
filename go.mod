@@ -9,6 +9,8 @@ require (
 	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
+replace github.com/ggerganov/whisper.cpp/bindings/go => ./whisper.cpp/bindings/go
+
 require (
 	github.com/aws/aws-sdk-go v1.38.20 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
