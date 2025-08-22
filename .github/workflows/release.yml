@@ -16,12 +16,12 @@ jobs:
         with:
           persist-credentials: false
           submodules: 'recursive'
-      - name: Build whisper.cpp bindings
-        run: make -C whisper.cpp/bindings/go
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+      - name: Build whisper.cpp bindings
+        run: make -C whisper.cpp/bindings/go
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
