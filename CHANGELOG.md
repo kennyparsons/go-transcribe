@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/kennyparsons/go-transcribe/compare/v1.2.0...v1.2.1) (2025-08-22)
+
+
+### Bug Fixes
+
+* **logs:** display progress messages while suppressing cpp output ([038cfd3](https://github.com/kennyparsons/go-transcribe/commit/038cfd3cd42abff0e394d0811fd79310b28a9f3c))
+
 # [1.2.0](https://github.com/kennyparsons/go-transcribe/compare/v1.1.0...v1.2.0) (2025-08-22)
 
 
