@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/kennyparsons/go-transcribe/compare/v1.1.0...v1.2.0) (2025-08-22)
+
+
+### Features
+
+* **extraction:** replace ffmpeg with vlc for robust audio extraction ([fa27059](https://github.com/kennyparsons/go-transcribe/commit/fa270591dd8d6dc63e59b9559d451bd76fa4ae84))
+
 # [1.1.0](https://github.com/kennyparsons/go-transcribe/compare/v1.0.6...v1.1.0) (2025-08-22)
 
 
