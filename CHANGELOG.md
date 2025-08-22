@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/kennyparsons/go-transcribe/compare/v1.0.3...v1.0.4) (2025-08-22)
+
+
+### Bug Fixes
+
+* **build:** use local whisper.cpp submodule ([8ebe1c0](https://github.com/kennyparsons/go-transcribe/commit/8ebe1c09095e01334577a50f30ae930894e0d3d5))
+
 ## [1.0.3](https://github.com/kennyparsons/go-transcribe/compare/v1.0.2...v1.0.3) (2025-08-22)
 
 
