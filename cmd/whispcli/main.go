@@ -35,7 +35,7 @@ func getConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homeDir, ".config", "whispcli", "gotranscribe.json"), nil
+	return filepath.Join(homeDir, ".config", "go-transcribe.json"), nil
 }
 
 func loadConfig() (Config, error) {
@@ -88,7 +88,7 @@ func must(err error) {
 
 func ffmpegToPCM(inputFile string) ([]float32, error) {
 	buf := bytes.NewBuffer(nil)
-	err := ffmpeg.Input(inputFile).
+	err := ffmpeg.Input(inputFile, ffmpeg.KwArgs{"loglevel": "error"}).
 		Output("pipe:", ffmpeg.KwArgs{
 			"format": "s16le",
 			"acodec": "pcm_s16le",
@@ -159,19 +159,58 @@ func transcribe(args []string, modelPathOverride string) {
 	samples, err := ffmpegToPCM(in)
 	must(err)
 
+	// --- Capture and suppress C++ output ---
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout = wOut
+	os.Stderr = wErr
+
 	fmt.Println("Loading model...")
 	model, err := whisper.New(modelPath)
-	must(err)
+	if err != nil {
+		// Stop capturing and print error
+		wOut.Close()
+		wErr.Close()
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+		stdoutBytes, _ := io.ReadAll(rOut)
+		stderrBytes, _ := io.ReadAll(rErr)
+		fmt.Printf("Error loading model:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		must(err)
+	}
 	defer model.Close()
 
 	ctx, err := model.NewContext()
-	must(err)
+	if err != nil {
+		wOut.Close()
+		wErr.Close()
+		os.Stdout = oldStdout
+		os.Stderr = oldStderr
+		stdoutBytes, _ := io.ReadAll(rOut)
+		stderrBytes, _ := io.ReadAll(rErr)
+		fmt.Printf("Error creating context:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		must(err)
+	}
 
 	ctx.SetLanguage("en")
 
 	fmt.Println("Transcribing...")
 	err = ctx.Process(samples, nil, nil, nil)
-	must(err)
+
+	// --- Restore output ---
+	wOut.Close()
+	wErr.Close()
+	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+
+	if err != nil {
+		stdoutBytes, _ := io.ReadAll(rOut)
+		stderrBytes, _ := io.ReadAll(rErr)
+		fmt.Printf("Error during transcription:\n---stdout---\n%s\n---stderr---\n%s\n", stdoutBytes, stderrBytes)
+		must(err)
+	}
 
 	f, err := os.Create(outTxt)
 	must(err)
@@ -188,6 +227,7 @@ func transcribe(args []string, modelPathOverride string) {
 
 	fmt.Printf("✅ Transcription saved to %s\n", outTxt)
 }
+
 
 // --- Setup Command ---
 
@@ -331,12 +371,23 @@ func setDefaultModel() {
 }
 
 func setup(args []string) {
+	// Ensure the config file exists with defaults if it's missing.
+	configPath, err := getConfigPath()
+	must(err)
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		fmt.Println("No config file found. Creating one with default settings.")
+		config, err := loadConfig()
+		must(err)
+		err = saveConfig(config)
+		must(err)
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
 		clearScreen()
 		fmt.Println("---------------------")
-		fmt.Println(" WhispCLI Setup Menu ")
+		fmt.Println(" Go Transcribe Setup Menu ")
 		fmt.Println("---------------------")
 		fmt.Println("1. Download models")
 		fmt.Println("2. Set default model path")
@@ -390,15 +441,16 @@ func main() {
 	command := args[0]
 	commandArgs := args[1:]
 
+	// Default to "transcribe" command if the command is not recognized
 	switch command {
-	case "transcribe":
-		transcribe(commandArgs, *modelPath)
 	case "setup":
 		setup(commandArgs)
 	case "version":
 		showVersion()
+	case "transcribe":
+		transcribe(commandArgs, *modelPath)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
-		os.Exit(1)
+		// If the command is not a recognized command, assume it's a file path for transcription.
+		transcribe(args, *modelPath)
 	}
 }
