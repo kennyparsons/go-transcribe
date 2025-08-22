@@ -12,8 +12,8 @@ builds:
     binary: go-transcribe
     env:
       - CGO_ENABLED=1
-      - CGO_CFLAGS=-I./whisper.cpp/include -I./whisper.cpp/ggml/include
-      - CGO_LDFLAGS=-L./whisper.cpp/build_go/src -L./whisper.cpp/build_go/ggml/src
+      - CGO_CFLAGS=-I{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/include -I{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/ggml/include
+      - CGO_LDFLAGS=-L{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/build_go/src -L{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/build_go/ggml/src -L{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/build_go/ggml/src/ggml-metal -L{{ .Env.GITHUB_WORKSPACE }}/whisper.cpp/build_go/ggml/src/ggml-blas
     goos:
       - darwin
     goarch:
