@@ -1,3 +1,11 @@
+## [1.0.3](https://github.com/kennyparsons/go-transcribe/compare/v1.0.2...v1.0.3) (2025-08-22)
+
+
+### Bug Fixes
+
+* **ci:** reorder setup steps to install go first ([d7aab75](https://github.com/kennyparsons/go-transcribe/commit/d7aab757c57b0e1f7cb571716719005406f0e1d6))
+* **version:** implement dynamic version injection ([1194614](https://github.com/kennyparsons/go-transcribe/commit/1194614db7ae1329a4c5c82ee771718e8969f717))
+
 ## [1.0.2](https://github.com/kennyparsons/go-transcribe/compare/v1.0.1...v1.0.2) (2025-08-21)
 
 
