@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/kennyparsons/go-transcribe/compare/v1.0.6...v1.1.0) (2025-08-22)
+
+
+### Features
+
+* **cli:** improve usability and add output suppression ([aa87881](https://github.com/kennyparsons/go-transcribe/commit/aa878819ddb5466a2f531983dfcc1f9afa4fe271))
+
 ## [1.0.6](https://github.com/kennyparsons/go-transcribe/compare/v1.0.5...v1.0.6) (2025-08-22)
 
 
