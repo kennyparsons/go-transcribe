@@ -86,29 +86,54 @@ func must(err error) {
 
 // --- Transcribe Command ---
 
-func ffmpegToPCM(inputFile string) ([]float32, error) {
+func vlcToPCM(inputFile string) ([]float32, error) {
+	// Check if VLC is in PATH
+	_, err := exec.LookPath("vlc")
+	if err != nil {
+		return nil, errors.New("VLC command not found, please install VLC and ensure it is in your PATH")
+	}
+
+	// Create a temporary file for VLC to write the WAV output
+	tempFile, err := os.CreateTemp("", "vlc-*.wav")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tempFilePath := tempFile.Name()
+	tempFile.Close() // Close the file so VLC can write to it
+	defer os.Remove(tempFilePath) // Clean up the temp file
+
+	// Construct the VLC command
+	soutString := fmt.Sprintf("#transcode{acodec=s16l,samplerate=16000,channels=1}:standard{access=file,mux=wav,dst=%s}", tempFilePath)
+	cmd := exec.Command("vlc", "-I", "dummy", "--no-sout-video", inputFile, "--sout", soutString, "vlc://quit")
+
+	// Run the command and capture output
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("VLC execution failed: %w\nVLC stderr: %s", err, stderr.String())
+	}
+
+	// Now, use ffmpeg-go to read the clean WAV file produced by VLC
 	buf := bytes.NewBuffer(nil)
-	err := ffmpeg.Input(inputFile, ffmpeg.KwArgs{"loglevel": "error"}).
+	err = ffmpeg.Input(tempFilePath).
 		Output("pipe:", ffmpeg.KwArgs{
 			"format": "s16le",
 			"acodec": "pcm_s16le",
-			"ar":     "16000",
-			"ac":     "1",
 		}).
 		WithOutput(buf).
 		Run()
 
 	if err != nil {
-		return nil, fmt.Errorf("ffmpeg-go execution failed: %w", err)
+		return nil, fmt.Errorf("ffmpeg-go failed to read WAV file: %w", err)
 	}
 
 	data := buf.Bytes()
 	if len(data) == 0 {
-		return nil, errors.New("ffmpeg-go produced no output")
+		return nil, errors.New("ffmpeg-go produced no output from WAV file")
 	}
 
 	if len(data)%2 != 0 {
-		return nil, errors.New("odd PCM data length")
+		return nil, errors.New("odd PCM data length from WAV file")
 	}
 
 	samples := make([]float32, len(data)/2)
@@ -117,13 +142,14 @@ func ffmpegToPCM(inputFile string) ([]float32, error) {
 	for i := range samples {
 		var v int16
 		if err := binary.Read(reader, binary.LittleEndian, &v); err != nil {
-			return nil, fmt.Errorf("failed to read PCM data: %w", err)
+			return nil, fmt.Errorf("failed to read PCM data from WAV file: %w", err)
 		}
 		samples[i] = float32(v) / 32768.0
 	}
 
 	return samples, nil
 }
+
 
 func transcribe(args []string, modelPathOverride string) {
 	config, err := loadConfig()
@@ -156,7 +182,7 @@ func transcribe(args []string, modelPathOverride string) {
 	outTxt := filepath.Join(dir, name+".txt")
 
 	fmt.Println("Extracting audio...")
-	samples, err := ffmpegToPCM(in)
+	samples, err := vlcToPCM(in)
 	must(err)
 
 	// --- Capture and suppress C++ output ---
