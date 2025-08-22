@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/kennyparsons/go-transcribe/compare/v1.0.5...v1.0.6) (2025-08-22)
+
+
+### Bug Fixes
+
+* **build:** build only for arm64 architecture ([b642618](https://github.com/kennyparsons/go-transcribe/commit/b64261816a85810e6f30659e590ed122b8cc30d1))
+
 ## [1.0.5](https://github.com/kennyparsons/go-transcribe/compare/v1.0.4...v1.0.5) (2025-08-22)
 
 
