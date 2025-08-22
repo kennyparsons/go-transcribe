@@ -6,7 +6,7 @@
 
 set -e
 
-echo "Building gotranscribe..."
+echo "Building go-transcribe..."
 
 # Get the absolute path to the project root directory.
 # This makes the script runnable from any directory.
