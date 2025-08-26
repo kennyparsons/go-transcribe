@@ -101,7 +101,7 @@ func vlcToPCM(inputFile string) ([]float32, error) {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tempFilePath := tempFile.Name()
-	tempFile.Close() // Close the file so VLC can write to it
+	tempFile.Close()              // Close the file so VLC can write to it
 	defer os.Remove(tempFilePath) // Clean up the temp file
 
 	// Construct the VLC command
@@ -156,7 +156,6 @@ func vlcToPCM(inputFile string) ([]float32, error) {
 	return samples, nil
 }
 
-
 func transcribe(args []string, modelPathOverride string) {
 	config, err := loadConfig()
 	must(err)
@@ -195,7 +194,7 @@ func transcribe(args []string, modelPathOverride string) {
 	fmt.Println("Transcribing...")
 
 	// --- Capture and suppress C++ output using low-level file descriptor redirection ---
-	
+
 	// Save original file descriptors
 	origStdout, err := syscall.Dup(int(os.Stdout.Fd()))
 	must(err)
@@ -229,7 +228,7 @@ func transcribe(args []string, modelPathOverride string) {
 		w.Close()
 		syscall.Dup2(origStdout, int(os.Stdout.Fd()))
 		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
-		
+
 		outputBytes, _ := io.ReadAll(r)
 		fmt.Printf("Error loading model:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
@@ -252,7 +251,7 @@ func transcribe(args []string, modelPathOverride string) {
 	err = ctx.Process(samples, nil, nil, nil)
 
 	// --- End of captured section ---
-	
+
 	// Close the write end of the pipe to signal EOF to the reader
 	w.Close()
 
@@ -266,7 +265,6 @@ func transcribe(args []string, modelPathOverride string) {
 		must(err)
 	}
 	r.Close()
-
 
 	f, err := os.Create(outTxt)
 	must(err)
@@ -283,9 +281,6 @@ func transcribe(args []string, modelPathOverride string) {
 
 	fmt.Printf("✅ Transcription saved to %s\n", outTxt)
 }
-
-
-
 
 // --- Setup Command ---
 
@@ -368,7 +363,7 @@ func performDownload(modelName string) {
 }
 
 func downloadModels() {
-	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3"}
+	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0"}
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
