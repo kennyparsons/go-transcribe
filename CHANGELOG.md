@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/kennyparsons/go-transcribe/compare/v1.2.1...v1.3.0) (2025-08-26)
+
+
+### Features
+
+* **models:** add quantized large-v3 model ([3228a60](https://github.com/kennyparsons/go-transcribe/commit/3228a605c5de0a537d7de0a1094583b062d4c26a))
+
 ## [1.2.1](https://github.com/kennyparsons/go-transcribe/compare/v1.2.0...v1.2.1) (2025-08-22)
 
 
