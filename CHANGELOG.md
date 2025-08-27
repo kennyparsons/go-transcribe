@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/kennyparsons/go-transcribe/compare/v1.3.0...v1.4.0) (2025-08-27)
+
+
+### Features
+
+* **setup:** implement interactive setup menus ([6d9297b](https://github.com/kennyparsons/go-transcribe/commit/6d9297b370885144467ca6fce2d6f765c6bc6de3))
+
 # [1.3.0](https://github.com/kennyparsons/go-transcribe/compare/v1.2.1...v1.3.0) (2025-08-26)
 
 
