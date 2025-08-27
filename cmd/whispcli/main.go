@@ -15,11 +15,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
+	"github.com/manifoldco/promptui"
 	"github.com/schollz/progressbar/v3"
 	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
@@ -364,63 +364,148 @@ func performDownload(modelName string) {
 
 func downloadModels() {
 	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0"}
-	reader := bufio.NewReader(os.Stdin)
+	homeDir, err := os.UserHomeDir()
+	must(err)
+	modelsDir := filepath.Join(homeDir, ".config", "whisper-cpp", "models")
+
+	type modelStatus struct {
+		Name       string
+		Downloaded bool
+	}
 
 	for {
 		clearScreen()
-		fmt.Println("--------------------------")
-		fmt.Println("   Model Download Menu    ")
-		fmt.Println("--------------------------")
-		for i, model := range models {
-			fmt.Printf("%d. %s\n", i+1, model)
-		}
-		fmt.Printf("%d. Back to main menu\n", len(models)+1)
-		fmt.Print("\nPlease select a model to download: ")
 
-		input, _ := reader.ReadString('\n')
-		choice, err := strconv.Atoi(strings.TrimSpace(input))
-
-		if err != nil || choice < 1 || choice > len(models)+1 {
-			fmt.Println("\nInvalid option.")
-			fmt.Print("Press Enter to continue...")
-			reader.ReadString('\n')
-			continue
+		var modelStatuses []modelStatus
+		for _, model := range models {
+			modelPath := filepath.Join(modelsDir, fmt.Sprintf("ggml-%s.bin", model))
+			_, err := os.Stat(modelPath)
+			modelStatuses = append(modelStatuses, modelStatus{Name: model, Downloaded: err == nil})
 		}
 
-		if choice == len(models)+1 {
+		// Add "Back" option separately as it doesn't have a downloaded status
+		type menuItem struct {
+			Name       string
+			Downloaded bool
+			IsBack     bool
+		}
+
+		var menuItems []menuItem
+		for _, ms := range modelStatuses {
+			menuItems = append(menuItems, menuItem{Name: ms.Name, Downloaded: ms.Downloaded})
+		}
+		menuItems = append(menuItems, menuItem{Name: "Back to main menu", IsBack: true})
+
+		templates := &promptui.SelectTemplates{
+			Label:    "{{ . }}?",
+			Active:   `→ {{ if .IsBack }}{{ .Name | cyan }}{{ else }}{{ .Name | cyan }} {{ if .Downloaded }}(downloaded){{ end }}{{ end }}`,
+			Inactive: `  {{ if .IsBack }}{{ .Name | faint }}{{ else }}{{ .Name | faint }} {{ if .Downloaded }}(downloaded){{ end }}{{ end }}`,
+			Selected: `✓ {{ .Name | green }}`,
+		}
+
+		prompt := promptui.Select{
+			Label:     "Model Download Menu",
+			Items:     menuItems,
+			Templates: templates,
+			Size:      10,
+		}
+
+		i, _, err := prompt.Run()
+		if err != nil {
+			if err == promptui.ErrInterrupt {
+				return
+			}
+			fmt.Printf("Prompt failed %v\n", err)
 			return
 		}
 
-		performDownload(models[choice-1])
+		selectedItem := menuItems[i]
+
+		if selectedItem.IsBack {
+			return
+		}
+
+		performDownload(selectedItem.Name)
 	}
 }
 
-func setDefaultModel() {
-	reader := bufio.NewReader(os.Stdin)
+func selectDefaultModel() {
 	config, err := loadConfig()
 	must(err)
 
-	clearScreen()
-	fmt.Println("--------------------------")
-	fmt.Println("  Set Default Model Path  ")
-	fmt.Println("--------------------------")
-	fmt.Printf("\nCurrent default: %s\n", config.DefaultModelPath)
-	fmt.Print("\nEnter the new full path to your default model file: ")
+	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0"}
+	homeDir, err := os.UserHomeDir()
+	must(err)
+	modelsDir := filepath.Join(homeDir, ".config", "whisper-cpp", "models")
 
-	input, _ := reader.ReadString('\n')
-	newPath := strings.TrimSpace(input)
-
-	if _, err := os.Stat(newPath); err != nil {
-		fmt.Printf("\nError: File does not exist at '%s'\n", newPath)
-	} else {
-		config.DefaultModelPath = newPath
-		err := saveConfig(config)
-		must(err)
-		fmt.Printf("\n✅ Default model path updated to: %s\n", newPath)
+	type menuItem struct {
+		Name       string
+		Downloaded bool
+		IsCurrent  bool
+		IsBack     bool
 	}
 
-	fmt.Print("\nPress Enter to return to the menu...")
-	reader.ReadString('\n')
+	var menuItems []menuItem
+	for _, model := range models {
+		modelPath := filepath.Join(modelsDir, fmt.Sprintf("ggml-%s.bin", model))
+		_, err := os.Stat(modelPath)
+		isCurrent := (modelPath == config.DefaultModelPath)
+		menuItems = append(menuItems, menuItem{Name: model, Downloaded: err == nil, IsCurrent: isCurrent})
+	}
+	menuItems = append(menuItems, menuItem{Name: "Back to main menu", IsBack: true})
+
+	templates := &promptui.SelectTemplates{
+		Label:    "{{ . }}?",
+		Active:   `→ {{ if .IsBack }}{{ .Name | cyan }}{{ else }}{{ .Name | cyan }} {{ if .IsCurrent }}(current){{ end }}{{ end }}`,
+		Inactive: `  {{ if .IsBack }}{{ .Name | faint }}{{ else }}{{ .Name | faint }} {{ if .IsCurrent }}(current){{ end }}{{ end }}`,
+		Selected: "✓ {{ .Name | green }}",
+	}
+
+	prompt := promptui.Select{
+		Label:     "Select default model",
+		Items:     menuItems,
+		Templates: templates,
+		Size:      10,
+	}
+
+	i, _, err := prompt.Run()
+	if err != nil {
+		if err == promptui.ErrInterrupt {
+			return
+		}
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	selectedItem := menuItems[i]
+
+	if selectedItem.IsBack {
+		return
+	}
+
+	if selectedItem.IsCurrent {
+		fmt.Println("\nThis is already the default model.")
+		fmt.Print("\nPress Enter to return to the menu...")
+		bufio.NewReader(os.Stdin).ReadBytes('\n')
+		return
+	}
+
+	newPath := filepath.Join(modelsDir, fmt.Sprintf("ggml-%s.bin", selectedItem.Name))
+
+	// Update config immediately
+	config.DefaultModelPath = newPath
+	err = saveConfig(config)
+	must(err)
+	fmt.Printf("\n✅ Default model path updated to: %s\n", newPath)
+
+	// If not downloaded, start download
+	if !selectedItem.Downloaded {
+		fmt.Printf("\nModel '%s' is not downloaded. Starting download...\n", selectedItem.Name)
+		performDownload(selectedItem.Name)
+	} else {
+		fmt.Print("\nPress Enter to return to the menu...")
+		bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
 }
 
 func setup(args []string) {
@@ -435,33 +520,33 @@ func setup(args []string) {
 		must(err)
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-
 	for {
 		clearScreen()
-		fmt.Println("---------------------")
-		fmt.Println(" Go Transcribe Setup Menu ")
-		fmt.Println("---------------------")
-		fmt.Println("1. Download models")
-		fmt.Println("2. Set default model path")
-		fmt.Println("3. Exit")
-		fmt.Print("\nPlease select an option: ")
+		prompt := promptui.Select{
+			Label: "Go Transcribe Setup Menu",
+			Items: []string{"Download models", "Select default model", "Exit"},
+			Size:  5,
+		}
 
-		input, _ := reader.ReadString('\n')
-		choice := strings.TrimSpace(input)
+		_, result, err := prompt.Run()
 
-		switch choice {
-		case "1":
+		if err != nil {
+			if err == promptui.ErrInterrupt {
+				fmt.Println("Exiting setup.")
+				return
+			}
+			fmt.Printf("Prompt failed %v\n", err)
+			return
+		}
+
+		switch result {
+		case "Download models":
 			downloadModels()
-		case "2":
-			setDefaultModel()
-		case "3":
+		case "Select default model":
+			selectDefaultModel()
+		case "Exit":
 			fmt.Println("Exiting setup.")
 			return
-		default:
-			fmt.Println("\nInvalid option.")
-			fmt.Print("Press Enter to continue...")
-			reader.ReadString('\n')
 		}
 	}
 }
