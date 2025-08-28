@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/kennyparsons/go-transcribe/compare/v1.4.0...v1.5.0) (2025-08-28)
+
+
+### Features
+
+* add ffmpeg and vlc as brew dependencies ([73e7d8a](https://github.com/kennyparsons/go-transcribe/commit/73e7d8a998b478b0cf5e300581d97fd627975fc8))
+
 # [1.4.0](https://github.com/kennyparsons/go-transcribe/compare/v1.3.0...v1.4.0) (2025-08-27)
 
 
