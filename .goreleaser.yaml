@@ -51,7 +51,9 @@ brews:
     dependencies:
       - name: ffmpeg
         type: formula
-    caveats: "go-transcribe requires VLC to be installed. Please run 'brew install --cask vlc'."
+      - name: vlc
+        type: formula
+    # caveats: "go-transcribe requires VLC to be installed. Please run 'brew install --cask vlc'."
     install: |
       bin.install "go-transcribe"
       bin.install_symlink "go-transcribe" => "transcribe"
