@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/kennyparsons/go-transcribe/compare/v1.5.0...v1.5.1) (2025-08-28)
+
+
+### Bug Fixes
+
+* correct goreleaser syntax for brew dependencies ([a341faf](https://github.com/kennyparsons/go-transcribe/commit/a341fafb61045800a1b95a39d41eacfcf924d9a9))
+
 # [1.5.0](https://github.com/kennyparsons/go-transcribe/compare/v1.4.0...v1.5.0) (2025-08-28)
 
 
