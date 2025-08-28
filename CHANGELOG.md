@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/kennyparsons/go-transcribe/compare/v1.5.1...v1.5.2) (2025-08-28)
+
+
+### Bug Fixes
+
+* use caveat for vlc cask dependency ([282ee76](https://github.com/kennyparsons/go-transcribe/commit/282ee763cb645f0f7291f1ec46a26365004a405b))
+
 ## [1.5.1](https://github.com/kennyparsons/go-transcribe/compare/v1.5.0...v1.5.1) (2025-08-28)
 
 
