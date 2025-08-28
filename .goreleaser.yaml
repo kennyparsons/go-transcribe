@@ -48,6 +48,9 @@ brews:
     directory: Formula
     description: "A Go command-line tool that performs transcription using whisper.cpp."
     license: "MIT"
+    depends_on:
+      formula: ["ffmpeg"]
+      cask: ["vlc"]
     install: |
       bin.install "go-transcribe"
       bin.install_symlink "go-transcribe" => "transcribe"
