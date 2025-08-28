@@ -1,3 +1,10 @@
+## [1.5.3](https://github.com/kennyparsons/go-transcribe/compare/v1.5.2...v1.5.3) (2025-08-28)
+
+
+### Bug Fixes
+
+* deps ([52153c3](https://github.com/kennyparsons/go-transcribe/commit/52153c3f0124c840d205ffd521554f1850c004ba))
+
 ## [1.5.2](https://github.com/kennyparsons/go-transcribe/compare/v1.5.1...v1.5.2) (2025-08-28)
 
 
