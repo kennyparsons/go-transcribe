@@ -246,7 +246,13 @@ func transcribe(args []string, modelPathOverride string) {
 		must(err)
 	}
 
-	ctx.SetLanguage("en")
+	// Auto-detect language from model name
+	language := "en"
+	if strings.Contains(filepath.Base(modelPath), "kotoba") {
+		language = "ja"
+		fmt.Println("Japanese model detected, setting language to 'ja'.")
+	}
+	ctx.SetLanguage(language)
 
 	err = ctx.Process(samples, nil, nil, nil)
 
@@ -269,6 +275,10 @@ func transcribe(args []string, modelPathOverride string) {
 	f, err := os.Create(outTxt)
 	must(err)
 	defer f.Close()
+
+	// Write UTF-8 BOM
+	_, err = f.Write([]byte{0xEF, 0xBB, 0xBF})
+	must(err)
 
 	for {
 		seg, err := ctx.NextSegment()
@@ -329,12 +339,15 @@ func performDownload(modelName string) {
 	clearScreen()
 	fmt.Printf("Preparing to download: %s\n\n", modelName)
 
-	src := "https://huggingface.co/ggerganov/whisper.cpp"
-	pfx := "resolve/main/ggml"
-	if strings.Contains(modelName, "tdrz") {
-		src = "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp"
+	var url string
+	switch modelName {
+	case "small.en-tdrz":
+		url = "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp/resolve/main/ggml-small.en-tdrz.bin"
+	case "large-v3-kotoba.ja_JP":
+		url = "https://huggingface.co/kotoba-tech/kotoba-whisper-v1.0-ggml/resolve/main/ggml-kotoba-whisper-v1.0.bin"
+	default:
+		url = fmt.Sprintf("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-%s.bin", modelName)
 	}
-	url := fmt.Sprintf("%s/%s-%s.bin", src, pfx, modelName)
 
 	homeDir, err := os.UserHomeDir()
 	must(err)
@@ -363,7 +376,7 @@ func performDownload(modelName string) {
 }
 
 func downloadModels() {
-	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0"}
+	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0", "large-v3-kotoba.ja_JP"}
 	homeDir, err := os.UserHomeDir()
 	must(err)
 	modelsDir := filepath.Join(homeDir, ".config", "whisper-cpp", "models")
@@ -433,7 +446,7 @@ func selectDefaultModel() {
 	config, err := loadConfig()
 	must(err)
 
-	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0"}
+	models := []string{"tiny.en", "base.en", "small.en", "small.en-tdrz", "medium.en", "large-v3", "large-v3-q5_0", "large-v3-kotoba.ja_JP"}
 	homeDir, err := os.UserHomeDir()
 	must(err)
 	modelsDir := filepath.Join(homeDir, ".config", "whisper-cpp", "models")
