@@ -21,7 +21,7 @@ jobs:
         with:
           go-version: '1.22'
       - name: Build whisper.cpp bindings
-        run: make -C whisper.cpp/bindings/go
+        run: make -C whisper.cpp/bindings/go WHISPER_NO_I8MM=1
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
