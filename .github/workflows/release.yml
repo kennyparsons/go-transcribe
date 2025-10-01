@@ -21,8 +21,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+      - name: Preconfigure CMake without i8mm
+        run: |
+          rm -rf whisper.cpp/build_go
+          cmake -S whisper.cpp -B whisper.cpp/build_go \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_C_FLAGS="-march=armv8.5-a" \
+            -DCMAKE_CXX_FLAGS="-march=armv8.5-a" \
+            -DGGML_NATIVE=OFF || true
       - name: Build whisper.cpp bindings
-        run: WHISPER_NO_I8MM=1 make -C whisper.cpp/bindings/go
+        run: make -C whisper.cpp/bindings/go
       - name: Semantic Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: semantic
