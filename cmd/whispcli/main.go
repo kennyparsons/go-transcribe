@@ -344,7 +344,7 @@ func performDownload(modelName string) {
 	case "small.en-tdrz":
 		url = "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp/resolve/main/ggml-small.en-tdrz.bin"
 	case "large-v3-kotoba.ja_JP":
-		url = "https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-ggml/blob/main/ggml-kotoba-whisper-v2.0.bin"
+		url = "https://huggingface.co/kotoba-tech/kotoba-whisper-v2.0-ggml/resolve/main/ggml-kotoba-whisper-v2.0.bin"
 	default:
 		url = fmt.Sprintf("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-%s.bin", modelName)
 	}
