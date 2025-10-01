@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/kennyparsons/go-transcribe/compare/v1.6.1...v1.6.2) (2025-10-01)
+
+
+### Bug Fixes
+
+* Update download URL for large-v3-kotoba.ja_JP model ([c8f23ad](https://github.com/kennyparsons/go-transcribe/commit/c8f23ad1ac75efbb0260757fe30ff1136699b87d))
+
 ## [1.6.1](https://github.com/kennyparsons/go-transcribe/compare/v1.6.0...v1.6.1) (2025-10-01)
 
 
