@@ -1,3 +1,20 @@
+# [1.6.0](https://github.com/kennyparsons/go-transcribe/compare/v1.5.4...v1.6.0) (2025-10-01)
+
+
+### Bug Fixes
+
+* **ci:** Add WHISPER_NO_I8MM=1 to GoReleaser build ([8bfb845](https://github.com/kennyparsons/go-transcribe/commit/8bfb84573779b4901e3bd696253c49d0df845e02))
+* **ci:** Disable i8mm in CI to fix ARM build failure ([11e12ab](https://github.com/kennyparsons/go-transcribe/commit/11e12ab7f6eda4e06d27cfec5be714a93152271f))
+* **ci:** Resolve ARM build failure in CI ([5943927](https://github.com/kennyparsons/go-transcribe/commit/59439279d47f631eb603898b60746c5f9a59eff4))
+* **ci:** Use WHISPER_NO_I8MM=1 env var to fix ARM build ([022b25a](https://github.com/kennyparsons/go-transcribe/commit/022b25a335d73d2f5ffa07c413f829c47b4ac390))
+* pipeline ([46e109c](https://github.com/kennyparsons/go-transcribe/commit/46e109cb36561574b03005a909e6701d0edc4867))
+
+
+### Features
+
+* Add Japanese model support and update docs ([08a0584](https://github.com/kennyparsons/go-transcribe/commit/08a0584313d210a96ec818984cba8cb87ae0c4cd))
+* **ci:** Allow manual workflow dispatch ([78d504f](https://github.com/kennyparsons/go-transcribe/commit/78d504fd9ca55576169f9c63062750bfc69bc83e))
+
 ## [1.5.4](https://github.com/kennyparsons/go-transcribe/compare/v1.5.3...v1.5.4) (2025-08-28)
 
 
