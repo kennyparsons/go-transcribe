@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/kennyparsons/go-transcribe/compare/v1.6.2...v1.7.0) (2025-11-06)
+
+
+### Features
+
+* **cli:** add --stdout and leveled logging flags ([0085884](https://github.com/kennyparsons/go-transcribe/commit/0085884b5668068e262cb966db98a3d21fe2de62))
+
 ## [1.6.2](https://github.com/kennyparsons/go-transcribe/compare/v1.6.1...v1.6.2) (2025-10-01)
 
 
