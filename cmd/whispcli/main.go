@@ -26,6 +26,32 @@ import (
 
 var version = "dev"
 
+// --- Global Flags ---
+// Defined globally to be accessible by the transcribe function for the output shim.
+var (
+	modelPath = flag.String("model", "", "Path to the whisper.cpp model file. Overrides the configured default.")
+	stdout    = flag.Bool("stdout", false, "Print transcription to standard output. This suppresses all other logging.")
+	logLevel  = flag.Int("log-level", LogLevelInfo, "Set log verbosity (0=Silent, 1=Error, 2=Warn, 3=Info, 4=Debug).")
+)
+
+// --- Logging ---
+
+const (
+	LogLevelSilent = iota
+	LogLevelError
+	LogLevelWarn
+	LogLevelInfo
+	LogLevelDebug
+)
+
+var globalLogLevel = LogLevelInfo
+
+func logit(level int, format string, a ...any) {
+	if level <= globalLogLevel {
+		fmt.Fprintf(os.Stderr, format+"\n", a...)
+	}
+}
+
 // --- Configuration ---
 
 type Config struct {
@@ -81,7 +107,7 @@ func saveConfig(config Config) error {
 
 func must(err error) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		logit(LogLevelError, "error: %v", err)
 		os.Exit(1)
 	}
 }
@@ -166,32 +192,24 @@ func transcribe(args []string, modelPathOverride string) {
 		modelPath = modelPathOverride
 	}
 
-	transcribeCmd := flag.NewFlagSet("transcribe", flag.ExitOnError)
-
-	transcribeCmd.Usage = func() {
+	if len(args) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: %s transcribe <media-file>\n", filepath.Base(os.Args[0]))
 		fmt.Fprintln(os.Stderr, "Use the global --model flag to override the default model path.")
-	}
-
-	transcribeCmd.Parse(args)
-
-	if transcribeCmd.NArg() < 1 {
-		transcribeCmd.Usage()
 		os.Exit(1)
 	}
 
-	in := transcribeCmd.Arg(0)
+	in := args[0]
 	base := filepath.Base(in)
 	name := base[:len(base)-len(filepath.Ext(base))]
 	dir := filepath.Dir(in)
 	outTxt := filepath.Join(dir, name+".txt")
 
-	fmt.Println("Extracting audio...")
+	logit(3, "Extracting audio...")
 	samples, err := vlcToPCM(in)
 	must(err)
 
-	fmt.Println("Loading model...")
-	fmt.Println("Transcribing...")
+	logit(3, "Loading model...")
+	logit(3, "Transcribing...")
 
 	// --- Capture and suppress C++ output using low-level file descriptor redirection ---
 
@@ -230,7 +248,7 @@ func transcribe(args []string, modelPathOverride string) {
 		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
 
 		outputBytes, _ := io.ReadAll(r)
-		fmt.Printf("Error loading model:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
+		logit(1, "Error loading model:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
 	defer model.Close()
@@ -242,7 +260,7 @@ func transcribe(args []string, modelPathOverride string) {
 		syscall.Dup2(origStderr, int(os.Stderr.Fd()))
 
 		outputBytes, _ := io.ReadAll(r)
-		fmt.Printf("Error creating context:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
+		logit(1, "Error creating context:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
 
@@ -250,7 +268,7 @@ func transcribe(args []string, modelPathOverride string) {
 	language := "en"
 	if strings.Contains(filepath.Base(modelPath), "kotoba") {
 		language = "ja"
-		fmt.Println("Japanese model detected, setting language to 'ja'.")
+		logit(3, "Japanese model detected, setting language to 'ja'.")
 	}
 	ctx.SetLanguage(language)
 
@@ -267,29 +285,44 @@ func transcribe(args []string, modelPathOverride string) {
 
 	if err != nil {
 		outputBytes, _ := io.ReadAll(r)
-		fmt.Printf("Error during transcription:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
+		logit(1, "Error during transcription:\n--- C/C++ Output ---\n%s\n---------------------\n", outputBytes)
 		must(err)
 	}
 	r.Close()
 
-	f, err := os.Create(outTxt)
-	must(err)
-	defer f.Close()
-
-	// Write UTF-8 BOM
-	_, err = f.Write([]byte{0xEF, 0xBB, 0xBF})
-	must(err)
-
-	for {
-		seg, err := ctx.NextSegment()
-		if errors.Is(err, io.EOF) {
-			break
+	// --- Output Shim ---
+	// Check the global `stdout` flag variable.
+	if *stdout {
+		// If --stdout is used, print transcription directly to os.Stdout
+		for {
+			seg, err := ctx.NextSegment()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			must(err)
+			// Use fmt.Fprintln to os.Stdout, NOT logit
+			fmt.Fprintln(os.Stdout, seg.Text)
 		}
+	} else {
+		// Default behavior: write to a .txt file
+		f, err := os.Create(outTxt)
 		must(err)
-		fmt.Fprintln(f, seg.Text)
-	}
+		defer f.Close()
 
-	fmt.Printf("✅ Transcription saved to \"%s\"\n", outTxt)
+		// Write UTF-8 BOM
+		_, err = f.Write([]byte{0xEF, 0xBB, 0xBF})
+		must(err)
+
+		for {
+			seg, err := ctx.NextSegment()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			must(err)
+			fmt.Fprintln(f, seg.Text)
+		}
+		logit(3, "✅ Transcription saved to \"%s\"", outTxt)
+	}
 }
 
 // --- Setup Command ---
@@ -337,7 +370,7 @@ func downloadFileWithProgress(url, destPath string) error {
 
 func performDownload(modelName string) {
 	clearScreen()
-	fmt.Printf("Preparing to download: %s\n\n", modelName)
+	logit(LogLevelInfo, "Preparing to download: %s\n", modelName)
 
 	var url string
 	switch modelName {
@@ -353,21 +386,21 @@ func performDownload(modelName string) {
 	must(err)
 	destDir := filepath.Join(homeDir, ".config", "whisper-cpp", "models")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
-		fmt.Printf("Error creating destination directory: %v\n", err)
+		logit(LogLevelError, "Error creating destination directory: %v", err)
 		return
 	}
 	destFile := filepath.Join(destDir, fmt.Sprintf("ggml-%s.bin", modelName))
 
 	if _, err := os.Stat(destFile); err == nil {
-		fmt.Printf("Model %s already exists at %s. Skipping download.\n", modelName, destFile)
+		logit(LogLevelInfo, "Model %s already exists at %s. Skipping download.", modelName, destFile)
 	} else {
-		fmt.Printf("Downloading from: %s\n", url)
-		fmt.Printf("Saving to: %s\n\n", destFile)
+		logit(LogLevelInfo, "Downloading from: %s", url)
+		logit(LogLevelInfo, "Saving to: %s\n", destFile)
 		if err := downloadFileWithProgress(url, destFile); err != nil {
-			fmt.Printf("\n\nError downloading model: %v\n", err)
+			logit(LogLevelError, "\n\nError downloading model: %v", err)
 			os.Remove(destFile)
 		} else {
-			fmt.Printf("\n\n✅ Download complete!\n")
+			logit(LogLevelInfo, "\n\n✅ Download complete!")
 		}
 	}
 
@@ -428,7 +461,7 @@ func downloadModels() {
 			if err == promptui.ErrInterrupt {
 				return
 			}
-			fmt.Printf("Prompt failed %v\n", err)
+			logit(LogLevelError, "Prompt failed %v", err)
 			return
 		}
 
@@ -486,7 +519,7 @@ func selectDefaultModel() {
 		if err == promptui.ErrInterrupt {
 			return
 		}
-		fmt.Printf("Prompt failed %v\n", err)
+		logit(LogLevelError, "Prompt failed %v", err)
 		return
 	}
 
@@ -497,7 +530,7 @@ func selectDefaultModel() {
 	}
 
 	if selectedItem.IsCurrent {
-		fmt.Println("\nThis is already the default model.")
+		logit(LogLevelInfo, "\nThis is already the default model.")
 		fmt.Print("\nPress Enter to return to the menu...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 		return
@@ -509,11 +542,11 @@ func selectDefaultModel() {
 	config.DefaultModelPath = newPath
 	err = saveConfig(config)
 	must(err)
-	fmt.Printf("\n✅ Default model path updated to: %s\n", newPath)
+	logit(LogLevelInfo, "\n✅ Default model path updated to: %s", newPath)
 
 	// If not downloaded, start download
 	if !selectedItem.Downloaded {
-		fmt.Printf("\nModel '%s' is not downloaded. Starting download...\n", selectedItem.Name)
+		logit(LogLevelInfo, "\nModel '%s' is not downloaded. Starting download...", selectedItem.Name)
 		performDownload(selectedItem.Name)
 	} else {
 		fmt.Print("\nPress Enter to return to the menu...")
@@ -526,7 +559,7 @@ func setup(args []string) {
 	configPath, err := getConfigPath()
 	must(err)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		fmt.Println("No config file found. Creating one with default settings.")
+		logit(LogLevelInfo, "No config file found. Creating one with default settings.")
 		config, err := loadConfig()
 		must(err)
 		err = saveConfig(config)
@@ -545,10 +578,10 @@ func setup(args []string) {
 
 		if err != nil {
 			if err == promptui.ErrInterrupt {
-				fmt.Println("Exiting setup.")
+				logit(LogLevelInfo, "Exiting setup.")
 				return
 			}
-			fmt.Printf("Prompt failed %v\n", err)
+			logit(LogLevelError, "Prompt failed %v", err)
 			return
 		}
 
@@ -558,7 +591,7 @@ func setup(args []string) {
 		case "Select default model":
 			selectDefaultModel()
 		case "Exit":
-			fmt.Println("Exiting setup.")
+			logit(LogLevelInfo, "Exiting setup.")
 			return
 		}
 	}
@@ -567,18 +600,59 @@ func setup(args []string) {
 // --- Version Command ---
 
 func showVersion() {
+	// Version info should always print to stdout
 	fmt.Printf("go-transcribe: %s\n", version)
 }
 
 // --- Main ---
 
 func main() {
-	// Global flag for model path
-	modelPath := flag.String("model", "", "Path to the whisper.cpp model file. Overrides the configured default.")
+	// --- Argument Parsing ---
+	// The Go `flag` package stops parsing at the first non-flag argument.
+	// To allow flags to be placed anywhere (e.g., after the filename),
+	// we manually separate flags from non-flag arguments.
+	var flags, nonFlags []string
+	args := os.Args[1:]
+	i := 0
+	for i < len(args) {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "-") {
+			nonFlags = append(nonFlags, arg)
+			i++
+			continue
+		}
+
+		// It's a flag.
+		flags = append(flags, arg)
+		i++
+
+		// If it's a flag that takes a value...
+		if (arg == "-model" || arg == "--model" || arg == "-log-level" || arg == "--log-level") {
+			// ...and the value is not specified with '=', and there is a next argument that is not a flag...
+			if !strings.Contains(arg, "=") && i < len(args) && !strings.HasPrefix(args[i], "-") {
+				// ...then the next argument is the value.
+				flags = append(flags, args[i])
+				i++ // Consume the value
+			}
+		}
+	}
+	// Reassemble os.Args with the program name, followed by flags, then non-flags.
+	os.Args = append([]string{os.Args[0]}, append(flags, nonFlags...)...)
+
+	// Parse the now-ordered flags.
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
+	// --- Log Level Determination ---
+	if *stdout {
+		globalLogLevel = LogLevelSilent
+	} else {
+		globalLogLevel = *logLevel
+	}
+
+	// --- Command Dispatch ---
+	commandArgs := flag.Args() // These are now guaranteed to be the non-flag arguments
+	if len(commandArgs) < 1 {
+		// Usage info should go to stderr.
 		fmt.Fprintf(os.Stderr, "Usage: %s [global options] <command> [command options]\n", filepath.Base(os.Args[0]))
 		fmt.Fprintln(os.Stderr, "\nGlobal Options:")
 		flag.PrintDefaults()
@@ -589,19 +663,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	command := args[0]
-	commandArgs := args[1:]
-
-	// Default to "transcribe" command if the command is not recognized
+	command := commandArgs[0]
 	switch command {
 	case "setup":
-		setup(commandArgs)
+		setup(commandArgs[1:])
 	case "version":
 		showVersion()
 	case "transcribe":
-		transcribe(commandArgs, *modelPath)
+		transcribe(commandArgs[1:], *modelPath)
 	default:
-		// If the command is not a recognized command, assume it's a file path for transcription.
-		transcribe(args, *modelPath)
+		// If the command is not a recognized one, assume it's a file path for transcription.
+		transcribe(commandArgs, *modelPath)
 	}
 }
